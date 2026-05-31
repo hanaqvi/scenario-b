@@ -1,74 +1,200 @@
+// Motor pins
+const int LEFT_MOTOR_PIN;
+const int RIGHT_MOTOR_PIN;
+const int BACK_MOTOR_PIN; 
+const int FRONT_MOTOR_PIN;
+
+// Photodiode pins
+const int FRONT_DIODE_PIN;
+const int BACK_DIODE_PIN;
+
+// switch pins
+const int LEFT_SWITCH_PIN;
+const int RIGHT_SWITCH_PIN;
+
+// Circular buffer for gap detection
+const int BUFFER_LENGTH = 10;
+float photodiodeBuffer[BUFFER_LENGTH];
+
+// Index of next value to be inserted in buffer
+int bufferHead = 0;
+
+// Number of readings to check to determine if there has been a consistent gap, rather than a stalagmite
+const int BUFFER_CHECK_SIZE = 5;
+
+// If diode reading is BELOW this it means there is some kind of gap (stalagmite or big gap) (arbtiraty for now)
+const float GAP_DETECTION_THRESHOLD = 2.0;
+
+// If diode reading is ABOVE this it means the robot is too close to the front wall (arbitraty for now)
+const float WALL_DETECTION_THRESHOLD = 10.0;
+
+// Tells the loop whether the robot should move left or right - begins by moving left
+bool movingLeft = true;
+
 void setup() {
-  // put your setup code here, to run once:
+
+  pinMode(LEFT_MOTOR_PIN, OUTPUT);
+  pinMode(RIGHT_MOTOR_PIN, OUTPUT);
+  pinMode(BACK_MOTOR_PIN, OUTPUT);
+  pinMode(FRONT_MOTOR_PIN, OUTPUT);
+
+  pinMode(FRONT_DIODE_PIN, INPUT);
+  pinMode(BACK_DIODE_PIN, INPUT);
+
+  pinMode(LEFT_SWITCH_PIN, INPUT);
+  pinMode(RIGHT_SWITCH_PIN, INPUT);
+
+  // populate buffer with high value to prevent false gap alert at the start
+  // could be changed as robot might start outside of the maze
+  for (int i = 0; i < BUFFER_LENGTH; i++) {
+
+    photodiodeBuffer[i] = 1023.0;
+
+  }
 
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
 
-  scanLeft();
-  
-  scanRight();
+  // Check for a gap and move through it if there is one
+  if (checkPathClear()) {
+
+    moveThroughGap();
+
+    // Move left first at the start of each new level
+    movingLeft = true;
+
+  } else {
+
+    // Check if robot is too close to the front wall and move backward if needed
+    while (nearFrontWall()) {
+
+      moveBackward();
+
+    }
+
+    // Move sideways
+    moveSideways();
+
+  }
 
 }
 
-void moveForward(int motorPinL, int motorPinR, int motorPinB, int motorPinF) {
-
-  digitalWrite(motorPinL, LOW);
-  digitalWrite(motorPinR, HIGH);
-  digitalWrite(motorPinB, LOW);
-  digitalWrite(motorPinF, LOW);
-
-}
-
+// These movement functions need to be changed as they will move forever right now
 void moveForward() {
 
-  digitalWrite(motorPinL, LOW);
-  digitalWrite(motorPinR, HIGH);
-  digitalWrite(motorPinB, LOW);
-  digitalWrite(motorPinF, LOW);
+  digitalWrite(LEFT_MOTOR_PIN, LOW);
+  digitalWrite(RIGHT_MOTOR_PIN, HIGH);
+  digitalWrite(BACK_MOTOR_PIN, LOW);
+  digitalWrite(FRONT_MOTOR_PIN, LOW);
 
 }
 
 void moveBackward() {
 
-  digitalWrite(motorPinL, HIGH);
-  digitalWrite(motorPinR, LOW);
-  digitalWrite(motorPinB, LOW);
-  digitalWrite(motorPinF, LOW);
+  digitalWrite(LEFT_MOTOR_PIN, HIGH);
+  digitalWrite(RIGHT_MOTOR_PIN, LOW);
+  digitalWrite(BACK_MOTOR_PIN, LOW);
+  digitalWrite(FRONT_MOTOR_PIN, LOW);
 
 }
 
 void moveLeft() {
 
-  digitalWrite(motorPinL, LOW);
-  digitalWrite(motorPinR, LOW);
-  digitalWrite(motorPinB, HIGH);
-  digitalWrite(motorPinF, LOW);
+  digitalWrite(LEFT_MOTOR_PIN, LOW);
+  digitalWrite(RIGHT_MOTOR_PIN, LOW);
+  digitalWrite(BACK_MOTOR_PIN, HIGH);
+  digitalWrite(FRONT_MOTOR_PIN, LOW);
 
 }
 
 void moveRight() {
 
-  digitalWrite(motorPinL, LOW);
-  digitalWrite(motorPinR, LOW);
-  digitalWrite(motorPinB, LOW);
-  digitalWrite(motorPinF, HIGH);
+  digitalWrite(LEFT_MOTOR_PIN, LOW);
+  digitalWrite(RIGHT_MOTOR_PIN, LOW);
+  digitalWrite(BACK_MOTOR_PIN, LOW);
+  digitalWrite(FRONT_MOTOR_PIN, HIGH);
+
+}
+
+// Move left or right depending on the current value of movingLeft
+void moveSideways() {
+
+  if (movingLeft) {
+
+    // If not touching left side wall move left
+    if (digitalRead(LEFT_SWITCH_PIN) == LOW) {
+
+      moveLeft();
+
+    } else { // Side wall has been touched, switch directions
+
+      movingLeft = false;
+
+    }
+
+  } else {
+
+    // If not touching right side wall
+    if (digitalREAD(RIGHT_SWITCH_PIN) == LOW) {
+
+      moveRight();
+
+    } else { // Side wall has been touched, switch directions
+
+      movingLeft = true;
+
+    }
+
+  }
+
+}
+
+bool checkPathClear() {
+
+  // Read front photodiode and store in buffer
+  photodiodeBuffer[bufferHead] = analogRead(FRONT_DIODE_PIN);
+  bufferHead = (bufferHead + 1) % BUFFER_LENGTH;;
+
+  // Check if the last 5 readings (buffer_check_size) are all below the threshold so that stalagmites are not detected as a full gap
+  // 5 is a filler number, this value needs to be tested in practice
+  for (int i = 1; i <= BUFFER_CHECK_SIZE; i++) {
+
+    int index = (bufferHead - i + BUFFER_LENGTH) % BUFFER_LENGTH
+
+    // If any of the last 5 values are high assume there is no gap
+    if (photodiodeBuffer[index] >= GAP_DETECTION_THRESHOLD) {
+
+      return false;
+
+    } 
+  }
+
+  // There is a gap
+  return true
+
+}
+
+// Check if the robot is too close the front wall
+bool nearFrontWall() {
+
+  return analogRead(FRONT_DIODE_PIN) >= WALL_DETECTION_THRESHOLD;
+
+}
+
+// Move forward through a detected gap until another wall is detected
+// Could add something to detect maze exit like counter (long period mean maze complete)
+void moveThroughGap() {
+
+  while (!nearFrontWall()) {
+
+    moveForward();
+
+  }
 
 }
 
 
-void scanLeft() {
-
-  // move left and scan for gaps
-
-}
-
-void scanRight() {
-
-  // move right and scan for gaps
-
-}
 
 
 
