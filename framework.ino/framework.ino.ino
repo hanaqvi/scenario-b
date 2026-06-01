@@ -1,6 +1,8 @@
 // Motor pins
 // to be added
 
+int simStep = 0;
+
 // LED pins
 const int FRONT1_LED_PIN = 48;
 const int FRONT2_LED_PIN = 46;
@@ -26,10 +28,10 @@ int bufferHead = 0;
 const int BUFFER_CHECK_SIZE = 5;
 
 // If diode reading is BELOW this it means there is some kind of gap (stalagmite or big gap) (arbtiraty for now)
-const int GAP_DETECTION_THRESHOLD = 2.0;
+const int GAP_DETECTION_THRESHOLD = 2;
 
 // If diode reading is ABOVE this it means the robot is too close to the front wall (arbitraty for now)
-const int WALL_DETECTION_THRESHOLD = 10.0;
+const int WALL_DETECTION_THRESHOLD = 10;
 
 // Tells the loop whether the robot should move left or right - begins by moving left
 bool movingLeft = true;
@@ -63,18 +65,17 @@ void setup() {
   // could be changed as robot might start outside of the maze
   for (int i = 0; i < BUFFER_LENGTH; i++) {
 
-    photodiodeBuffer[i] = 1023.0;
+    photodiodeBuffer[i] = 1023;
 
   }
 
 }
 
 void loop() {
-
+  simStep++;
   switch(currentState) {
 
     case SEARCHING_FOR_GAP:
-
       if (checkPathClear()) { // If there is a gap, prepare robot to move through it
 
         // Change state
@@ -131,28 +132,35 @@ void loop() {
 // All movement functions move the robot a constant distance
 void moveForward() {
 
+  Serial.println("Moving forward x units!");
 
 }
 
 void moveBackward() {
 
+  Serial.println("Moving backward x units!");
 
 }
 
 void moveLeft() {
 
+  Serial.println("Moving left x units!");
+
 }
 
 void moveRight() {
+
+  Serial.println("Moving right x units!");
 
 }
 
 // Move left or right depending on the current value of movingLeft
 void moveSideways() {
-
+ 
   if (movingLeft) {
 
-    if (digitalRead(LEFT_SWITCH_PIN) == LOW) { // If not touching left side wall move left
+    //if (digitalRead(LEFT_SWITCH_PIN) == LOW) { // If not touching left side wall move left
+    if (simulateSwitch(LEFT_SWITCH_PIN) == LOW) {
 
       moveLeft();
 
@@ -166,7 +174,8 @@ void moveSideways() {
   } 
   else {
 
-    if (digitalRead(RIGHT_SWITCH_PIN) == LOW) { // If not touching right side wall
+    // if (digitalRead(RIGHT_SWITCH_PIN) == LOW) { // If not touching right side wall
+    if (simulateSwitch(RIGHT_SWITCH_PIN) == LOW) {
 
       moveRight();
 
@@ -184,7 +193,8 @@ void moveSideways() {
 bool checkPathClear() {
 
   // Read front photodiode and store in buffer
-  photodiodeBuffer[bufferHead] = readPhotodiode(FRONT1_LED_PIN, FRONT_DIODE_PIN);
+  // photodiodeBuffer[bufferHead] = readPhotodiode(FRONT1_LED_PIN, FRONT_DIODE_PIN);
+  photodiodeBuffer[bufferHead] = simulatePhotodiode();
   bufferHead = (bufferHead + 1) % BUFFER_LENGTH;
 
   // Check if the last 5 readings (buffer_check_size) are all below the threshold so that stalagmites are not detected as a full gap
@@ -209,7 +219,8 @@ bool checkPathClear() {
 // Check if the robot is too close the front wall
 bool nearFrontWall() {
 
-  return readPhotodiode(FRONT1_LED_PIN, FRONT_DIODE_PIN) > WALL_DETECTION_THRESHOLD;
+  // return readPhotodiode(FRONT1_LED_PIN, FRONT_DIODE_PIN) > WALL_DETECTION_THRESHOLD;
+  return simulatePhotodiode() > WALL_DETECTION_THRESHOLD;
 
 }
 
@@ -222,4 +233,64 @@ int readPhotodiode(int ledPin, int diodePin) {
   digitalWrite(ledPin, LOW); // Turn off LED
   return diodeReading;
 
+}
+
+
+int simulatePhotodiode() {
+  // Increment the simulation step on every read
+
+  // Steps 10-14: Simulate 1st gap (Needs 5 readings below 2.0)
+  if (simStep >= 10 && simStep <= 14) {
+    Serial.print("[Sim] Step "); Serial.print(simStep); Serial.println(": Simulating GAP 1");
+    return 1; 
+  }
+  
+  // Step 20: Simulate hitting the front wall on the next level
+  if (simStep == 20) {
+    Serial.print("[Sim] Step "); Serial.print(simStep); Serial.println(": Simulating FRONT WALL");
+    return 15; 
+  }
+  
+  // Steps 30-34: Simulate 2nd gap
+  if (simStep >= 30 && simStep <= 34) {
+    Serial.print("[Sim] Step "); Serial.print(simStep); Serial.println(": Simulating GAP 2");
+    return 1;
+  }
+
+  // Step 40: Simulate hitting the front wall on the next level
+  if (simStep == 39) {
+    Serial.print("[Sim] Step "); Serial.print(simStep); Serial.println(": Simulating FRONT WALL");
+    return 15; 
+  }
+
+  // Steps 45-46: Simulate getting too close to front wall
+  if (simStep == 45 || simStep == 46) {
+    Serial.print("[Sim] Step "); Serial.print(simStep); Serial.println(": Simulating BACKWARDS");
+    return 12;
+  }
+
+  // Steps 50-60: Simulate comb-shaped irregulariites
+  if (simStep == 50 || simStep == 52 || simStep == 54 || simStep == 55 || simStep == 56 || simStep == 58 || simStep == 60) {
+    Serial.print("[Sim] Step "); Serial.print(simStep); Serial.println(": Simulating Irregularites");
+    return 1;
+  }
+  
+  // End simulation
+  if (simStep > 60) {
+    while(true); // Halt execution
+  }
+
+  // Default state: Safe distance (between 2.0 and 10.0)
+  return 5; 
+}
+
+int simulateSwitch(int pin) {
+  // Step 25: Simulate hitting the left wall to test direction change
+  if (simStep == 25 && pin == LEFT_SWITCH_PIN) {
+    Serial.print("[Sim] Step "); Serial.print(simStep); Serial.println(": Simulating LEFT WALL HIT");
+    return HIGH;
+  }
+  
+  // Default state: Switches not pressed
+  return LOW;
 }
