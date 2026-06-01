@@ -4,6 +4,10 @@ const int RIGHT_MOTOR_PIN;
 const int BACK_MOTOR_PIN; 
 const int FRONT_MOTOR_PIN;
 
+// LED pins
+const int FRONT_LED_PIN;
+const int BACK_LED_PIN;
+
 // Photodiode pins
 const int FRONT_DIODE_PIN;
 const int BACK_DIODE_PIN;
@@ -37,6 +41,9 @@ void setup() {
   pinMode(RIGHT_MOTOR_PIN, OUTPUT);
   pinMode(BACK_MOTOR_PIN, OUTPUT);
   pinMode(FRONT_MOTOR_PIN, OUTPUT);
+
+  pinMode(FRONT_LED_PIN, OUTPUT);
+  pinMODE(BACK_LED_PIN, OUTPUT);
 
   pinMode(FRONT_DIODE_PIN, INPUT);
   pinMode(BACK_DIODE_PIN, INPUT);
@@ -153,7 +160,9 @@ void moveSideways() {
 bool checkPathClear() {
 
   // Read front photodiode and store in buffer
+  digitalWrite(FRONT_LED_PIN, HIGH);
   photodiodeBuffer[bufferHead] = analogRead(FRONT_DIODE_PIN);
+  digitalWrite(FRONT_LED_PIN, LOW);
   bufferHead = (bufferHead + 1) % BUFFER_LENGTH;;
 
   // Check if the last 5 readings (buffer_check_size) are all below the threshold so that stalagmites are not detected as a full gap
@@ -178,7 +187,14 @@ bool checkPathClear() {
 // Check if the robot is too close the front wall
 bool nearFrontWall() {
 
-  return analogRead(FRONT_DIODE_PIN) >= WALL_DETECTION_THRESHOLD;
+  // Turn on LED and check if photodiode reading is too high
+  digitalWrite(FRONT_LED_PIN, HIGH);
+  int closeToWall = analogRead(FRONT_DIODE_PIN) >= WALL_DETECTION_THRESHOLD;
+
+  // Turn off LED
+  digitalWrite(FRONT_LED_PIN, LOW);
+
+  return closeToWall;
 
 }
 
