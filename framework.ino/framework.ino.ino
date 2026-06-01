@@ -131,11 +131,11 @@ void loop() {
 }
 
 // All movement functions move the robot a constant distance
-void moveForward() {
+void moveForward(int distance) {
 
 }
 
-void moveBackward() {
+void moveBackward(int distance) {
 
 }
 
@@ -184,9 +184,7 @@ void moveSideways() {
 bool checkPathClear() {
 
   // Read front photodiode and store in buffer
-  digitalWrite(FRONT_LED_PIN, HIGH);
-  photodiodeBuffer[bufferHead] = analogRead(FRONT_DIODE_PIN);
-  digitalWrite(FRONT_LED_PIN, LOW);
+  photodiodeBuffer[bufferHead] = readPhotodiode(FRONT_LED_PIN, FRONT_DIODE_PIN);
   bufferHead = (bufferHead + 1) % BUFFER_LENGTH;;
 
   // Check if the last 5 readings (buffer_check_size) are all below the threshold so that stalagmites are not detected as a full gap
@@ -211,13 +209,16 @@ bool checkPathClear() {
 // Check if the robot is too close the front wall
 bool nearFrontWall() {
 
-  // Turn on LED and check if photodiode reading is too high
-  digitalWrite(FRONT_LED_PIN, HIGH);
-  int closeToWall = analogRead(FRONT_DIODE_PIN) >= WALL_DETECTION_THRESHOLD;
+  return readPhotodiode(FRONT_LED_PIN, FRONT_DIODE_PIN) > WALL_DETECTION_THRESHOLD;
 
-  // Turn off LED
-  digitalWrite(FRONT_LED_PIN, LOW);
+}
 
-  return closeToWall;
+// Get a reading from a photodiode
+int readPhotodiode(int ledPin, diodePin) {
+
+  digitalWrite(ledPin, HIGH); // Turn on LED
+  int diodeReading = analogRead(diodePin); // Read reflected value
+  digiralWrite(ledPin, LOW); // Turn off LED
+  return diodeReading;
 
 }
