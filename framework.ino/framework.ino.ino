@@ -18,7 +18,7 @@ const int RIGHT_SWITCH_PIN;
 
 // Circular buffer for gap detection
 const int BUFFER_LENGTH = 10;
-float photodiodeBuffer[BUFFER_LENGTH];
+int photodiodeBuffer[BUFFER_LENGTH];
 
 // Index of next value to be inserted in buffer
 int bufferHead = 0;
@@ -27,13 +27,23 @@ int bufferHead = 0;
 const int BUFFER_CHECK_SIZE = 5;
 
 // If diode reading is BELOW this it means there is some kind of gap (stalagmite or big gap) (arbtiraty for now)
-const float GAP_DETECTION_THRESHOLD = 2.0;
+const int GAP_DETECTION_THRESHOLD = 2.0;
 
 // If diode reading is ABOVE this it means the robot is too close to the front wall (arbitraty for now)
-const float WALL_DETECTION_THRESHOLD = 10.0;
+const int WALL_DETECTION_THRESHOLD = 10.0;
 
 // Tells the loop whether the robot should move left or right - begins by moving left
 bool movingLeft = true;
+
+// Tells the loop what behaviour to execute
+enum BotState {
+  SEARCHING_FOR_GAP, // Moving left to right
+  REVERSING,
+  MOVING_THROUGH_GAP
+};
+
+// Begin by searching for a gap
+BotState currentState = SEARCHING_FOR_GAP;
 
 void setup() {
 
@@ -63,64 +73,77 @@ void setup() {
 
 void loop() {
 
-  // Check for a gap and move through it if there is one
-  if (checkPathClear()) {
+  switch(currentState) {
 
-    moveThroughGap();
+    case SEARCHING_FOR_GAP:
 
-    // Move left first at the start of each new level
-    movingLeft = true;
+      if (checkPathClear()) { // If there is a gap, prepare robot to move through it
 
-  } else {
+        // Change state
+        currentState = MOVING_THROUGH_GAP;
 
-    // Check if robot is too close to the front wall and move backward if needed
-    while (nearFrontWall()) {
+      }
+      else if (nearFrontWall()) { // If robot is too close to wall prepare to reverse
 
-      moveBackward();
+        currentState = REVERSING;
 
-    }
+      }
+      else { // Continue to move left or right if no gap or reversing is required
 
-    // Move sideways
-    moveSideways();
+        moveSideways();
 
+      }
+
+      break;
+
+    case REVERSING:
+
+      if (nearFrontWall()) { // Move backwards while wall is too close
+
+        moveBackward();
+
+      }
+      else { // Robot is safe distance away, go back to searching for gaps
+
+        currentState = SEARCHING_FOR_GAP;
+
+      }
+
+      break;
+
+    case MOVING_THROUGH_GAP:
+
+      if (nearFrontWall()) { // If robot has reached a front wall at the next level, begin looking for another gap
+
+        currentState = SEARCHING_FOR_GAP;
+        movingLeft = true; // Reset movement for next level
+
+      }
+      else { // Continue to move forward
+
+        moveForward();
+
+      } 
+
+      break;
   }
 
 }
 
-// These movement functions need to be changed as they will move forever right now
+// All movement functions move the robot a constant distance
 void moveForward() {
-
-  digitalWrite(LEFT_MOTOR_PIN, LOW);
-  digitalWrite(RIGHT_MOTOR_PIN, HIGH);
-  digitalWrite(BACK_MOTOR_PIN, LOW);
-  digitalWrite(FRONT_MOTOR_PIN, LOW);
 
 }
 
 void moveBackward() {
 
-  digitalWrite(LEFT_MOTOR_PIN, HIGH);
-  digitalWrite(RIGHT_MOTOR_PIN, LOW);
-  digitalWrite(BACK_MOTOR_PIN, LOW);
-  digitalWrite(FRONT_MOTOR_PIN, LOW);
-
 }
 
 void moveLeft() {
 
-  digitalWrite(LEFT_MOTOR_PIN, LOW);
-  digitalWrite(RIGHT_MOTOR_PIN, LOW);
-  digitalWrite(BACK_MOTOR_PIN, HIGH);
-  digitalWrite(FRONT_MOTOR_PIN, LOW);
-
 }
 
 void moveRight() {
-
-  digitalWrite(LEFT_MOTOR_PIN, LOW);
-  digitalWrite(RIGHT_MOTOR_PIN, LOW);
-  digitalWrite(BACK_MOTOR_PIN, LOW);
-  digitalWrite(FRONT_MOTOR_PIN, HIGH);
 
 }
 
@@ -129,25 +152,26 @@ void moveSideways() {
 
   if (movingLeft) {
 
-    // If not touching left side wall move left
-    if (digitalRead(LEFT_SWITCH_PIN) == LOW) {
+    if (digitalRead(LEFT_SWITCH_PIN) == LOW) { // If not touching left side wall move left
 
       moveLeft();
 
-    } else { // Side wall has been touched, switch directions
+    }
+    else { // Side wall has been touched, switch directions
 
       movingLeft = false;
 
     }
 
-  } else {
+  } 
+  else {
 
-    // If not touching right side wall
-    if (digitalREAD(RIGHT_SWITCH_PIN) == LOW) {
+    if (digitalREAD(RIGHT_SWITCH_PIN) == LOW) { // If not touching right side wall
 
       moveRight();
 
-    } else { // Side wall has been touched, switch directions
+    }
+    else { // Side wall has been touched, switch directions
 
       movingLeft = true;
 
@@ -172,7 +196,7 @@ bool checkPathClear() {
     int index = (bufferHead - i + BUFFER_LENGTH) % BUFFER_LENGTH
 
     // If any of the last 5 values are high assume there is no gap
-    if (photodiodeBuffer[index] >= GAP_DETECTION_THRESHOLD) {
+    if (photodiodeBuffer[index] >= GAP_DETECTION_THRESHOLD) { 
 
       return false;
 
@@ -195,17 +219,5 @@ bool nearFrontWall() {
   digitalWrite(FRONT_LED_PIN, LOW);
 
   return closeToWall;
-
-}
-
-// Move forward through a detected gap until another wall is detected
-// Could add something to detect maze exit like counter (long period mean maze complete)
-void moveThroughGap() {
-
-  while (!nearFrontWall()) {
-
-    moveForward();
-
-  }
 
 }
