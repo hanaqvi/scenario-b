@@ -46,6 +46,8 @@ BotState currentState = SEARCHING_FOR_GAP;
 
 void setup() {
 
+  Serial.begin(9600);
+
   pinMode(FRONT1_LED_PIN, OUTPUT);
   pinMode(FRONT2_LED_PIN, OUTPUT);
   pinMode(BACK1_LED_PIN, OUTPUT);
@@ -129,9 +131,11 @@ void loop() {
 // All movement functions move the robot a constant distance
 void moveForward() {
 
+
 }
 
 void moveBackward() {
+
 
 }
 
