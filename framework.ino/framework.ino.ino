@@ -131,11 +131,11 @@ void loop() {
 }
 
 // All movement functions move the robot a constant distance
-void moveForward(int distance) {
+void moveForward() {
 
 }
 
-void moveBackward(int distance) {
+void moveBackward() {
 
 }
 
