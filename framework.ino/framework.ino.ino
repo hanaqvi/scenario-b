@@ -1,20 +1,19 @@
 // Motor pins
-const int LEFT_MOTOR_PIN;
-const int RIGHT_MOTOR_PIN;
-const int BACK_MOTOR_PIN; 
-const int FRONT_MOTOR_PIN;
+// to be added
 
 // LED pins
-const int FRONT_LED_PIN;
-const int BACK_LED_PIN;
+const int FRONT1_LED_PIN = 48;
+const int FRONT2_LED_PIN = 46;
+const int BACK1_LED_PIN = 44;
+const int BACK2_LED_PIN = 42;
 
 // Photodiode pins
-const int FRONT_DIODE_PIN;
-const int BACK_DIODE_PIN;
+const int FRONT_DIODE_PIN = A10;
+const int BACK_DIODE_PIN = A11;
 
 // switch pins
-const int LEFT_SWITCH_PIN;
-const int RIGHT_SWITCH_PIN;
+const int LEFT_SWITCH_PIN = 50;
+const int RIGHT_SWITCH_PIN = 52;
 
 // Circular buffer for gap detection
 const int BUFFER_LENGTH = 10;
@@ -47,13 +46,10 @@ BotState currentState = SEARCHING_FOR_GAP;
 
 void setup() {
 
-  pinMode(LEFT_MOTOR_PIN, OUTPUT);
-  pinMode(RIGHT_MOTOR_PIN, OUTPUT);
-  pinMode(BACK_MOTOR_PIN, OUTPUT);
-  pinMode(FRONT_MOTOR_PIN, OUTPUT);
-
-  pinMode(FRONT_LED_PIN, OUTPUT);
-  pinMODE(BACK_LED_PIN, OUTPUT);
+  pinMode(FRONT1_LED_PIN, OUTPUT);
+  pinMode(FRONT2_LED_PIN, OUTPUT);
+  pinMode(BACK1_LED_PIN, OUTPUT);
+  pinMode(BACK2_LED_PIN, OUTPUT);
 
   pinMode(FRONT_DIODE_PIN, INPUT);
   pinMode(BACK_DIODE_PIN, INPUT);
@@ -103,7 +99,7 @@ void loop() {
         moveBackward();
 
       }
-      else { // Robot is safe distance away, go back to searching for gaps
+      else { // Robot is safe distance away from wall, go back to searching for gaps
 
         currentState = SEARCHING_FOR_GAP;
 
@@ -166,7 +162,7 @@ void moveSideways() {
   } 
   else {
 
-    if (digitalREAD(RIGHT_SWITCH_PIN) == LOW) { // If not touching right side wall
+    if (digitalRead(RIGHT_SWITCH_PIN) == LOW) { // If not touching right side wall
 
       moveRight();
 
@@ -184,14 +180,14 @@ void moveSideways() {
 bool checkPathClear() {
 
   // Read front photodiode and store in buffer
-  photodiodeBuffer[bufferHead] = readPhotodiode(FRONT_LED_PIN, FRONT_DIODE_PIN);
-  bufferHead = (bufferHead + 1) % BUFFER_LENGTH;;
+  photodiodeBuffer[bufferHead] = readPhotodiode(FRONT1_LED_PIN, FRONT_DIODE_PIN);
+  bufferHead = (bufferHead + 1) % BUFFER_LENGTH;
 
   // Check if the last 5 readings (buffer_check_size) are all below the threshold so that stalagmites are not detected as a full gap
   // 5 is a filler number, this value needs to be tested in practice
   for (int i = 1; i <= BUFFER_CHECK_SIZE; i++) {
 
-    int index = (bufferHead - i + BUFFER_LENGTH) % BUFFER_LENGTH
+    int index = (bufferHead - i + BUFFER_LENGTH) % BUFFER_LENGTH;
 
     // If any of the last 5 values are high assume there is no gap
     if (photodiodeBuffer[index] >= GAP_DETECTION_THRESHOLD) { 
@@ -202,23 +198,24 @@ bool checkPathClear() {
   }
 
   // There is a gap
-  return true
+  return true;
 
 }
 
 // Check if the robot is too close the front wall
 bool nearFrontWall() {
 
-  return readPhotodiode(FRONT_LED_PIN, FRONT_DIODE_PIN) > WALL_DETECTION_THRESHOLD;
+  return readPhotodiode(FRONT1_LED_PIN, FRONT_DIODE_PIN) > WALL_DETECTION_THRESHOLD;
 
 }
 
 // Get a reading from a photodiode
-int readPhotodiode(int ledPin, diodePin) {
+int readPhotodiode(int ledPin, int diodePin) {
 
   digitalWrite(ledPin, HIGH); // Turn on LED
+  delay(1); // Delay to allow value to be read
   int diodeReading = analogRead(diodePin); // Read reflected value
-  digiralWrite(ledPin, LOW); // Turn off LED
+  digitalWrite(ledPin, LOW); // Turn off LED
   return diodeReading;
 
 }
