@@ -1,5 +1,28 @@
-// Motor pins
-// to be added
+// Motor pins (Role 3)
+const int SIDE_P1 = 5;
+const int SIDE_P2 = 6;
+
+// Motor pins (Role 4)
+const int MOTOR_A_PWM = 3;
+const int MOTOR_A_DIR = 12;
+const int MOTOR_A_BRAKE = 9;
+
+const int MOTOR_B_PWM = 11;
+const int MOTOR_B_DIR = 13;
+const int MOTOR_B_BRAKE = 8;
+
+// Motor encoder pins
+const int ENCODER_A_CHAN_A = 20;
+const int ENCODER_A_CHAN_B = 26;
+
+const int ENCODER_B_CHAN_A = 21;
+const int ENCODER_B_CHAN_B = 28;
+
+const int ENCODER_C_CHAN_A = 18;
+const int ENCODER_C_CHAN_B = 30;
+
+const int ENCODER_D_CHAN_A = 19;
+const int ENCODER_D_CHAN_B = 32;
 
 int simStep = 0;
 
@@ -10,10 +33,14 @@ const int BACK1_LED_PIN = 44;
 const int BACK2_LED_PIN = 42;
 
 // Photodiode pins
-const int FRONT_DIODE_PIN = A10;
-const int BACK_DIODE_PIN = A11;
+// const int FRONT_DIODE_PIN = A10;
+// const int BACK_DIODE_PIN = A11;
 
-// switch pins
+// smaller arduino pins
+const int FRONT_DIODE_PIN = A4;
+const int BACK_DIODE_PIN = A5;
+
+// Side switch pins
 const int LEFT_SWITCH_PIN = 50;
 const int RIGHT_SWITCH_PIN = 52;
 
@@ -50,6 +77,25 @@ void setup() {
 
   Serial.begin(9600);
 
+  pinMode(SIDE_P1, OUTPUT);
+  pinMode(SIDE_P2, OUTPUT);
+
+  pinMode(MOTOR_A_PWM, OUTPUT);
+  pinMode(MOTOR_A_DIR, OUTPUT);
+  pinMode(MOTOR_A_BRAKE, OUTPUT);
+  pinMode(MOTOR_B_PWM, OUTPUT);
+  pinMode(MOTOR_B_DIR, OUTPUT);
+  pinMode(MOTOR_B_BRAKE, OUTPUT);
+
+  pinMode(ENCODER_A_CHAN_A, INPUT_PULLUP);
+  pinMode(ENCODER_A_CHAN_B, INPUT_PULLUP);
+  pinMode(ENCODER_B_CHAN_A, INPUT_PULLUP);
+  pinMode(ENCODER_B_CHAN_B, INPUT_PULLUP);
+  pinMode(ENCODER_C_CHAN_A, INPUT_PULLUP);
+  pinMode(ENCODER_C_CHAN_B, INPUT_PULLUP);
+  pinMode(ENCODER_D_CHAN_A, INPUT_PULLUP);
+  pinMode(ENCODER_D_CHAN_B, INPUT_PULLUP);
+
   pinMode(FRONT1_LED_PIN, OUTPUT);
   pinMode(FRONT2_LED_PIN, OUTPUT);
   pinMode(BACK1_LED_PIN, OUTPUT);
@@ -61,8 +107,7 @@ void setup() {
   pinMode(LEFT_SWITCH_PIN, INPUT);
   pinMode(RIGHT_SWITCH_PIN, INPUT);
 
-  // populate buffer with high value to prevent false gap alert at the start
-  // could be changed as robot might start outside of the maze
+  // Populate buffer with high values to prevent false gap alert at the start
   for (int i = 0; i < BUFFER_LENGTH; i++) {
 
     photodiodeBuffer[i] = 1023;
@@ -72,7 +117,7 @@ void setup() {
 }
 
 void loop() {
-  simStep++;
+  simStep++; // for simulation
   switch(currentState) {
 
     case SEARCHING_FOR_GAP:
