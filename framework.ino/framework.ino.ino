@@ -184,6 +184,7 @@ void loop() {
       }
       else { // Robot is safe distance away from wall, go back to searching for gaps
 
+        engageVerticalBrakes();
         currentState = SEARCHING_FOR_GAP;
 
       }
@@ -193,7 +194,7 @@ void loop() {
     case MOVING_FORWARD:
 
       if (nearWall(FRONT_DIODE_PIN)) { // If robot has reached a front wall at the next level, begin looking for another gap
-
+        engageVerticalBrakes();
         currentState = SEARCHING_FOR_GAP;
 
       }
@@ -219,81 +220,32 @@ void loop() {
 
 }
 
-// All movement functions move the robot a constant distance
 void moveBackward() {
-
-  // Motor A forward and B reverse creates backward movement for the robot
-  Serial.println("FORWARD");
   digitalWrite(MOTOR_A_BRAKE, LOW);
-  digitalWrite(MOTOR_B_BRAKE, LOW);   
-  digitalWrite(MOTOR_A_DIR, HIGH); 
-  digitalWrite(MOTOR_B_DIR, LOW);    
+  digitalWrite(MOTOR_B_BRAKE, LOW);
+  digitalWrite(MOTOR_A_DIR, HIGH);
+  digitalWrite(MOTOR_B_DIR, LOW);
   analogWrite(MOTOR_A_PWM, TEST_SPEED);
-  analogWrite(MOTOR_B_PWM, TEST_SPEED); 
-
-  // Move forward for 0.5 seconds
-  delay(250);
-
-  // Stop moving
-  engageVerticalBrakes();
-
-  //delay(200);
-
+  analogWrite(MOTOR_B_PWM, TEST_SPEED);
 }
 
 void moveForward() {
-
-  // Motor A reverse and B forward creates forward movement for the robot
-  Serial.println("BACKWARDS");
   digitalWrite(MOTOR_A_BRAKE, LOW);
-  digitalWrite(MOTOR_B_BRAKE, LOW);   
-  digitalWrite(MOTOR_A_DIR, LOW); 
-  digitalWrite(MOTOR_B_DIR, HIGH);    
+  digitalWrite(MOTOR_B_BRAKE, LOW);
+  digitalWrite(MOTOR_A_DIR, LOW);
+  digitalWrite(MOTOR_B_DIR, HIGH);
   analogWrite(MOTOR_A_PWM, TEST_SPEED);
-  analogWrite(MOTOR_B_PWM, TEST_SPEED); 
-
-  // Move backward for 0.5 seconds
-  delay(250);
-
-  // Stop moving
-  engageVerticalBrakes();
-
-  //delay(200);
-
+  analogWrite(MOTOR_B_PWM, TEST_SPEED);
 }
 
 void moveLeft() {
-  
-  // Run motors
   analogWrite(MOTOR_C_PIN_2, TEST_SPEED);
   analogWrite(MOTOR_D_PIN_1, TEST_SPEED);
-  
-  // Wait half a second
-  delay(250);
-
-  // Stop motors
-  analogWrite(MOTOR_C_PIN_2, 0);
-  analogWrite(MOTOR_D_PIN_1, 0);
-
-  // delay(200);
-
 }
 
 void moveRight() {
-
-  // Run motors
   analogWrite(MOTOR_C_PIN_1, TEST_SPEED);
   analogWrite(MOTOR_D_PIN_2, TEST_SPEED);
-  
-  // Wait half a second
-  delay(250);
-
-  // Stop motors
-  analogWrite(MOTOR_C_PIN_1, 0);
-  analogWrite(MOTOR_D_PIN_2, 0);
-
-  // delay(200);
-
 }
 
 void rotate180() {
@@ -317,36 +269,27 @@ void rotate180() {
 
 // Move left or right depending on the current value of movingLeft
 void moveSideways() {
-
   if (movingLeft) {
-
-    if (digitalRead(LEFT_SWITCH_PIN) == LOW) { // If not touching left side wall move left
-
+    if (digitalRead(LEFT_SWITCH_PIN) == LOW) {
+      analogWrite(MOTOR_C_PIN_1, 0); // stop right motor
+      analogWrite(MOTOR_D_PIN_2, 0);
       moveLeft();
-
-    }
-    else { // Side wall has been touched, switch directions
-
+    } else {
       movingLeft = false;
-
+      analogWrite(MOTOR_C_PIN_2, 0); // stop left motor
+      analogWrite(MOTOR_D_PIN_1, 0);
     }
-
-  } 
-  else {
-
-    if (digitalRead(RIGHT_SWITCH_PIN) == LOW) { // If not touching right side wall
-
+  } else {
+    if (digitalRead(RIGHT_SWITCH_PIN) == LOW) {
+      analogWrite(MOTOR_C_PIN_2, 0); // stop left motor
+      analogWrite(MOTOR_D_PIN_1, 0);
       moveRight();
-
-    }
-    else { // Side wall has been touched, switch directions
-
+    } else {
       movingLeft = true;
-
+      analogWrite(MOTOR_C_PIN_1, 0); // stop right motor
+      analogWrite(MOTOR_D_PIN_2, 0);
     }
-
   }
-
 }
 
 // Find the distance to the wall from the front or back sensor
