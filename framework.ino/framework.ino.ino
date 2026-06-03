@@ -1,6 +1,10 @@
 // Motor pins (Role 3)
 const int SIDE_P1 = 5;
 const int SIDE_P2 = 6;
+const int MOTOR_C_PIN_1 = 4;
+const int MOTOR_C_PIN_2 = 5;
+const int MOTOR_D_PIN_1 = 6;
+const int MOTOR_D_PIN_2 = 7;
 
 // Motor pins (Role 4)
 
@@ -14,7 +18,7 @@ const int MOTOR_B_PWM = 11;
 const int MOTOR_B_DIR = 13;
 const int MOTOR_B_BRAKE = 8;
 
-const int TEST_SPEED = 100;
+const int TEST_SPEED = 50;
 
 // Motor encoder pins
 const int ENCODER_A_CHAN_A = 20;
@@ -64,7 +68,7 @@ const int GAP_DETECTION_THRESHOLD = 40;
 
 // If diode reading is ABOVE this it means the robot is too close to the front wall (arbitraty for now)
 const int WALL_DETECTION_THRESHOLD = 10;
-const float IDEAL_DISTANCE_FROM_WALL = 3.5;
+const float IDEAL_DISTANCE_FROM_WALL = 2;
 
 // Tells the loop whether the robot should move left or right - begins by moving left
 bool movingLeft = true;
@@ -73,12 +77,12 @@ bool movingLeft = true;
 enum BotState {
   SEARCHING_FOR_GAP, // Moving left to right
   REVERSING,
-  MOVING_THROUGH_GAP,
-  ROTATING,
+  MOVING_FORWARD,
+  TESTING,
 };
 
 // Begin by searching for a gap
-BotState currentState = MOVING_THROUGH_GAP;
+BotState currentState = MOVING_FORWARD;
 
 void setup() {
 
@@ -86,6 +90,10 @@ Serial.begin(9600);
 
   pinMode(SIDE_P1, OUTPUT);
   pinMode(SIDE_P2, OUTPUT);
+  pinMode(MOTOR_C_PIN_1, OUTPUT);
+  pinMode(MOTOR_C_PIN_2, OUTPUT);
+  pinMode(MOTOR_D_PIN_1, OUTPUT);
+  pinMode(MOTOR_D_PIN_2, OUTPUT);
 
   pinMode(MOTOR_A_PWM, OUTPUT);
   pinMode(MOTOR_A_DIR, OUTPUT);
@@ -145,13 +153,18 @@ void loop() {
 
       if (checkPathClear()) { // If there is a gap, prepare robot to move through it
 
-        // Change state
-        currentState = MOVING_THROUGH_GAP;
+        currentState = MOVING_FORWARD; // Change state
+        movingLeft = true; // Reset movement for next level
 
       }
-      else if (nearFrontWall()) { // If robot is too close to wall prepare to reverse
+      else if (nearWall(FRONT_DIODE_PIN)) { // If robot is too close to front wall prepare to reverse
 
         currentState = REVERSING;
+
+      } 
+      else if (nearWall(BACK_DIODE_PIN)) { // If robot is too close to back wall move forward
+
+        currentState = MOVING_FORWARD;
 
       }
       else { // Continue to move left or right if no gap or reversing is required
@@ -164,7 +177,7 @@ void loop() {
 
     case REVERSING:
 
-      if (nearFrontWall()) { // Move backwards while wall is too close
+      if (nearWall(FRONT_DIODE_PIN)) { // Move backwards while wall is too close
 
         moveBackward();
 
@@ -177,12 +190,11 @@ void loop() {
 
       break;
 
-    case MOVING_THROUGH_GAP:
+    case MOVING_FORWARD:
 
-      if (nearFrontWall()) { // If robot has reached a front wall at the next level, begin looking for another gap
+      if (nearWall(FRONT_DIODE_PIN)) { // If robot has reached a front wall at the next level, begin looking for another gap
 
         currentState = SEARCHING_FOR_GAP;
-        movingLeft = true; // Reset movement for next level
 
       }
       else { // Continue to move forward
@@ -194,10 +206,12 @@ void loop() {
       break;
     
     // test rotating case
-    case ROTATING:
+    case TESTING:
       
+      moveLeft();
+      moveRight();
       moveForward();
-      delay(1000);
+      moveBackward();
       while (true) {
         delay(10);
       }
@@ -206,9 +220,9 @@ void loop() {
 }
 
 // All movement functions move the robot a constant distance
-void moveForward() {
+void moveBackward() {
 
-  // Motor A forward and B reverse creates forward movement for the robot
+  // Motor A forward and B reverse creates backward movement for the robot
   Serial.println("FORWARD");
   digitalWrite(MOTOR_A_BRAKE, LOW);
   digitalWrite(MOTOR_B_BRAKE, LOW);   
@@ -218,14 +232,16 @@ void moveForward() {
   analogWrite(MOTOR_B_PWM, TEST_SPEED); 
 
   // Move forward for 0.5 seconds
-  delay(500);
+  delay(250);
 
   // Stop moving
   engageVerticalBrakes();
 
+  //delay(200);
+
 }
 
-void moveBackward() {
+void moveForward() {
 
   // Motor A reverse and B forward creates forward movement for the robot
   Serial.println("BACKWARDS");
@@ -237,40 +253,46 @@ void moveBackward() {
   analogWrite(MOTOR_B_PWM, TEST_SPEED); 
 
   // Move backward for 0.5 seconds
-  delay(500);
+  delay(250);
 
   // Stop moving
   engageVerticalBrakes();
 
+  //delay(200);
+
 }
 
 void moveLeft() {
-
+  
   // Run motors
-  analogWrite(SIDE_P1, TEST_SPEED); 
-  analogWrite(SIDE_P2,0);
-
-  // Run for 0.5 seconds
-  delay(500);
+  analogWrite(MOTOR_C_PIN_2, TEST_SPEED);
+  analogWrite(MOTOR_D_PIN_1, TEST_SPEED);
+  
+  // Wait half a second
+  delay(250);
 
   // Stop motors
-  analogWrite(SIDE_P1,0); 
-  analogWrite(SIDE_P2,0); 
+  analogWrite(MOTOR_C_PIN_2, 0);
+  analogWrite(MOTOR_D_PIN_1, 0);
+
+  // delay(200);
 
 }
 
 void moveRight() {
 
   // Run motors
-  analogWrite(SIDE_P1,0); 
-  analogWrite(SIDE_P2, TEST_SPEED); 
-
-  // Run for 0.5 seconds
-  delay(500);
+  analogWrite(MOTOR_C_PIN_1, TEST_SPEED);
+  analogWrite(MOTOR_D_PIN_2, TEST_SPEED);
+  
+  // Wait half a second
+  delay(250);
 
   // Stop motors
-  analogWrite(SIDE_P1,0); 
-  analogWrite(SIDE_P2,0); 
+  analogWrite(MOTOR_C_PIN_1, 0);
+  analogWrite(MOTOR_D_PIN_2, 0);
+
+  // delay(200);
 
 }
 
@@ -330,8 +352,21 @@ void moveSideways() {
 // Find the distance to the wall from the front or back sensor
 float distanceToWall(int diodePin) {
 
-  float distance = sqrt(1094.8427 ./ (analogRead(diodePin) - 32.6798);\
-  Serial.println("Distance: " + distance);
+  float distance;
+
+  // Different equation depending on front or back wall
+  if (diodePin == FRONT_DIODE_PIN) {
+
+    distance = sqrt(1094.8427 / (analogRead(diodePin) - 32.6798));
+    //Serial.println("Distance to front wall: " + distance);
+
+  } else if (diodePin == BACK_DIODE_PIN) {
+
+    distance = sqrt(1312.7629 / (analogRead(diodePin) - 34.2690));
+    //Serial.println("Distance to back wall: " + distance);
+
+  }
+
   return distance;
 
 }
@@ -361,11 +396,11 @@ bool checkPathClear() {
 
 }
 
-// Check if the robot is too close the front wall
-bool nearFrontWall() {
 
-  // return analogRead(FRONT_DIODE_PIN) > WALL_DETECTION_THRESHOLD;
-  return distanceToWall(FRONT_DIODE_PIN) < IDEAL_DISTANCE_FROM_WALL;
+// Check if the robot is too close to the front or back wall
+bool nearWall(int diodePin) {
+
+  return distanceToWall(diodePin) < IDEAL_DISTANCE_FROM_WALL;
 
 }
 
