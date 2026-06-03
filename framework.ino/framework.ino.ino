@@ -72,11 +72,12 @@ bool movingLeft = true;
 enum BotState {
   SEARCHING_FOR_GAP, // Moving left to right
   REVERSING,
-  MOVING_THROUGH_GAP
+  MOVING_THROUGH_GAP,
+  ROTATING,
 };
 
 // Begin by searching for a gap
-BotState currentState = SEARCHING_FOR_GAP;
+BotState currentState = ROTATING;
 
 void setup() {
 
@@ -92,8 +93,8 @@ Serial.begin(9600);
   pinMode(MOTOR_B_DIR, OUTPUT);
   pinMode(MOTOR_B_BRAKE, OUTPUT);
 
-  // Lock breaks on startup for safety
-  engageBrakes();
+  // Lock vertical breaks on startup for safety
+  engageVerticalBrakes();
 
   pinMode(ENCODER_A_CHAN_A, INPUT_PULLUP);
   pinMode(ENCODER_A_CHAN_B, INPUT_PULLUP);
@@ -184,6 +185,14 @@ void loop() {
       } 
 
       break;
+    
+    // test rotating case
+    case ROTATING:
+      
+      rotate180();
+      while (true) {
+        delay(10);
+      }
   }
 
 }
@@ -191,31 +200,88 @@ void loop() {
 // All movement functions move the robot a constant distance
 void moveForward() {
 
-  Serial.println("\n>> MOTOR A: FORWARD");
-  digitalWrite(MOTOR_A_BRAKE, LOW);  
-  digitalWrite(MOTOR_A_DIR, HIGH);   
+  // Motor A forward and B reverse creates forward movement for the robot
+  Serial.println("FORWARD");
+  digitalWrite(MOTOR_A_BRAKE, LOW);
+  digitalWrite(MOTOR_B_BRAKE, LOW);   
+  digitalWrite(MOTOR_A_DIR, HIGH); 
+  digitalWrite(MOTOR_B_DIR, LOW);    
   analogWrite(MOTOR_A_PWM, TEST_SPEED);
+  analogWrite(MOTOR_B_PWM, TEST_SPEED); 
+
+  // Move forward for 0.5 seconds
   delay(500);
-  engageBrakes(); 
+
+  // Stop moving
+  engageVerticalBrakes();
 
 }
 
 void moveBackward() {
 
+  // Motor A reverse and B forward creates forward movement for the robot
+  Serial.println("BACKWARDS");
+  digitalWrite(MOTOR_A_BRAKE, LOW);
+  digitalWrite(MOTOR_B_BRAKE, LOW);   
+  digitalWrite(MOTOR_A_DIR, LOW); 
+  digitalWrite(MOTOR_B_DIR, HIGH);    
+  analogWrite(MOTOR_A_PWM, TEST_SPEED);
+  analogWrite(MOTOR_B_PWM, TEST_SPEED); 
+
+  // Move backward for 0.5 seconds
+  delay(500);
+
+  // Stop moving
+  engageVerticalBrakes();
 
 }
 
 void moveLeft() {
 
+  // Run motors
+  analogWrite(SIDE_P1, TEST_SPEED); 
+  analogWrite(SIDE_P2,0);
+
+  // Run for 0.5 seconds
+  delay(500);
+
+  // Stop motors
+  analogWrite(SIDE_P1,0); 
+  analogWrite(SIDE_P2,0); 
+
 }
 
 void moveRight() {
 
+  // Run motors
+  analogWrite(SIDE_P1,0); 
+  analogWrite(SIDE_P2, TEST_SPEED); 
+
+  // Run for 0.5 seconds
+  delay(500);
+
+  // Stop motors
+  analogWrite(SIDE_P1,0); 
+  analogWrite(SIDE_P2,0); 
+
 }
 
-void turn180() {
+void rotate180() {
 
-  
+  Serial.println("ROTATING");
+  engageVerticalBrakes();
+  int startPosition = encoderACount;
+  int endPosition = encoderBCount;
+
+  digitalWrite(MOTOR_A_BRAKE, LOW);
+  digitalWrite(MOTOR_B_BRAKE, LOW);   
+  digitalWrite(MOTOR_A_DIR, HIGH); 
+  digitalWrite(MOTOR_B_DIR, HIGH);    
+  analogWrite(MOTOR_A_PWM, TEST_SPEED);
+  analogWrite(MOTOR_B_PWM, TEST_SPEED);
+
+  delay(3000);
+  engageVerticalBrakes();
 
 }
 
@@ -289,7 +355,7 @@ bool nearFrontWall() {
 int readPhotodiode(int ledPin, int diodePin) {
 
   digitalWrite(ledPin, HIGH); // Turn on LED
-  delay(1); // Delay to allow value to be read
+  delay(20); // Delay to allow value to be read
   int diodeReading = analogRead(diodePin); // Read reflected value
   digitalWrite(ledPin, LOW); // Turn off LED
   return diodeReading;
@@ -297,7 +363,7 @@ int readPhotodiode(int ledPin, int diodePin) {
 }
 
 // Stops both motors instantly
-void engageBrakes() {
+void engageVerticalBrakes() {
 
   analogWrite(MOTOR_A_PWM, 0);
   analogWrite(MOTOR_B_PWM, 0);
