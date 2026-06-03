@@ -14,7 +14,7 @@ const int MOTOR_B_PWM = 11;
 const int MOTOR_B_DIR = 13;
 const int MOTOR_B_BRAKE = 8;
 
-const int TEST_SPEED = 150;
+const int TEST_SPEED = 100;
 
 // Motor encoder pins
 const int ENCODER_A_CHAN_A = 20;
@@ -60,10 +60,11 @@ int bufferHead = 0;
 const int BUFFER_CHECK_SIZE = 5;
 
 // If diode reading is BELOW this it means there is some kind of gap (stalagmite or big gap) (arbtiraty for now)
-const int GAP_DETECTION_THRESHOLD = 2;
+const int GAP_DETECTION_THRESHOLD = 40;
 
 // If diode reading is ABOVE this it means the robot is too close to the front wall (arbitraty for now)
 const int WALL_DETECTION_THRESHOLD = 10;
+const float IDEAL_DISTANCE_FROM_WALL = 3.5;
 
 // Tells the loop whether the robot should move left or right - begins by moving left
 bool movingLeft = true;
@@ -77,7 +78,7 @@ enum BotState {
 };
 
 // Begin by searching for a gap
-BotState currentState = ROTATING;
+BotState currentState = MOVING_THROUGH_GAP;
 
 void setup() {
 
@@ -114,6 +115,12 @@ Serial.begin(9600);
   pinMode(FRONT2_LED_PIN, OUTPUT);
   pinMode(BACK1_LED_PIN, OUTPUT);
   pinMode(BACK2_LED_PIN, OUTPUT);
+
+  // Turn on all LEDs
+  digitalWrite(FRONT1_LED_PIN, HIGH);
+  digitalWrite(FRONT2_LED_PIN, HIGH);
+  digitalWrite(BACK1_LED_PIN, HIGH);
+  digitalWrite(BACK2_LED_PIN, HIGH);
 
   pinMode(FRONT_DIODE_PIN, INPUT);
   pinMode(BACK_DIODE_PIN, INPUT);
@@ -189,7 +196,8 @@ void loop() {
     // test rotating case
     case ROTATING:
       
-      rotate180();
+      moveForward();
+      delay(1000);
       while (true) {
         delay(10);
       }
@@ -319,10 +327,19 @@ void moveSideways() {
 
 }
 
+// Find the distance to the wall from the front or back sensor
+float distanceToWall(int diodePin) {
+
+  float distance = sqrt(1094.8427 ./ (analogRead(diodePin) - 32.6798);\
+  Serial.println("Distance: " + distance);
+  return distance;
+
+}
+
 bool checkPathClear() {
 
   // Read front photodiode and store in buffer
-  photodiodeBuffer[bufferHead] = readPhotodiode(FRONT1_LED_PIN, FRONT_DIODE_PIN);
+  photodiodeBuffer[bufferHead] = analogRead(FRONT_DIODE_PIN);
   bufferHead = (bufferHead + 1) % BUFFER_LENGTH;
 
   // Check if the last 5 readings (buffer_check_size) are all below the threshold so that stalagmites are not detected as a full gap
@@ -347,18 +364,8 @@ bool checkPathClear() {
 // Check if the robot is too close the front wall
 bool nearFrontWall() {
 
-  return readPhotodiode(FRONT1_LED_PIN, FRONT_DIODE_PIN) > WALL_DETECTION_THRESHOLD;
-
-}
-
-// Get a reading from a photodiode
-int readPhotodiode(int ledPin, int diodePin) {
-
-  digitalWrite(ledPin, HIGH); // Turn on LED
-  delay(20); // Delay to allow value to be read
-  int diodeReading = analogRead(diodePin); // Read reflected value
-  digitalWrite(ledPin, LOW); // Turn off LED
-  return diodeReading;
+  // return analogRead(FRONT_DIODE_PIN) > WALL_DETECTION_THRESHOLD;
+  return distanceToWall(FRONT_DIODE_PIN) < IDEAL_DISTANCE_FROM_WALL;
 
 }
 
