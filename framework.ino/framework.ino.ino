@@ -18,7 +18,7 @@ const int MOTOR_B_PWM = 11;
 const int MOTOR_B_DIR = 13;
 const int MOTOR_B_BRAKE = 8;
 
-const int TEST_SPEED = 50;
+const int TEST_SPEED = 25;
 
 // Motor encoder pins
 const int ENCODER_A_CHAN_A = 20;
@@ -68,7 +68,7 @@ const int GAP_DETECTION_THRESHOLD = 40;
 
 // If diode reading is ABOVE this it means the robot is too close to the front wall (arbitraty for now)
 const int WALL_DETECTION_THRESHOLD = 10;
-const float IDEAL_DISTANCE_FROM_WALL = 2;
+const float IDEAL_DISTANCE_FROM_WALL = 3;
 
 // Tells the loop whether the robot should move left or right - begins by moving left
 bool movingLeft = true;
@@ -152,7 +152,11 @@ void loop() {
     case SEARCHING_FOR_GAP:
 
       if (checkPathClear()) { // If there is a gap, prepare robot to move through it
-
+        analogWrite(MOTOR_C_PIN_1, 0);
+        analogWrite(MOTOR_C_PIN_2, 0);
+        analogWrite(MOTOR_D_PIN_1, 0);
+        analogWrite(MOTOR_D_PIN_2, 0);
+        delay(1000);
         currentState = MOVING_FORWARD; // Change state
         movingLeft = true; // Reset movement for next level
 
@@ -300,12 +304,13 @@ float distanceToWall(int diodePin) {
   // Different equation depending on front or back wall
   if (diodePin == FRONT_DIODE_PIN) {
 
-    distance = sqrt(1094.8427 / (analogRead(diodePin) - 32.6798));
+    distance = sqrt(1312.7629 / (analogRead(diodePin) - 34.2690)); // new front
+
     Serial.println(distance);
 
   } else if (diodePin == BACK_DIODE_PIN) {
 
-    distance = sqrt(1312.7629 / (analogRead(diodePin) - 34.2690));
+    distance = sqrt(1614.8472 / (analogRead(diodePin) - 34.2690));
 
   }
 
@@ -313,31 +318,60 @@ float distanceToWall(int diodePin) {
 
 }
 
-bool checkPathClear() {
+// bool checkPathClear() {
 
-  // Read front photodiode and store in buffer
-  photodiodeBuffer[bufferHead] = analogRead(FRONT_DIODE_PIN);
-  bufferHead = (bufferHead + 1) % BUFFER_LENGTH;
+//   // Read front photodiode and store in buffer
+//   photodiodeBuffer[bufferHead] = analogRead(FRONT_DIODE_PIN);
+//   bufferHead = (bufferHead + 1) % BUFFER_LENGTH;
 
-  // Check if the last 5 readings (buffer_check_size) are all below the threshold so that stalagmites are not detected as a full gap
-  // 5 is a filler number, this value needs to be tested in practice
-  for (int i = 1; i <= BUFFER_CHECK_SIZE; i++) {
+//   // Check if the last 5 readings (buffer_check_size) are all below the threshold so that stalagmites are not detected as a full gap
+//   // 5 is a filler number, this value needs to be tested in practice
+//   for (int i = 1; i <= BUFFER_CHECK_SIZE; i++) {
 
-    int index = (bufferHead - i + BUFFER_LENGTH) % BUFFER_LENGTH;
+//     int index = (bufferHead - i + BUFFER_LENGTH) % BUFFER_LENGTH;
 
-    // If any of the last 5 values are high assume there is no gap
-    if (photodiodeBuffer[index] > GAP_DETECTION_THRESHOLD) { 
+//     // If any of the last 5 values are high assume there is no gap
+//     if (photodiodeBuffer[index] > GAP_DETECTION_THRESHOLD) { 
 
-      return false;
+//       return false;
 
-    } 
-  }
+//     } 
+//   }
 
-  // There is a gap
-  return true;
+//   // There is a gap
+//   return true;
 
+// }
+
+// Stores encoder position at the moment a gap was first detected
+long gapStartEncoderCount = 0;
+bool gapDetected = false;
+
+int distanceTravelled() {
+  return (encoderDCount - gapStartEncoderCount) / 8.35;
 }
 
+bool checkPathClear() {
+  int reading = analogRead(FRONT_DIODE_PIN);
+
+  if (reading < GAP_DETECTION_THRESHOLD) { // A gap is present
+    if (!gapDetected) {
+      // Gap just started - snapshot the encoder position
+      gapStartEncoderCount = encoderDCount;
+      gapDetected = true;
+    }
+    // Check if robot has travelled 18cm since gap began
+    if (distanceTravelled() >= 18) {
+      gapDetected = false; // Reset for next gap
+      return true;
+    }
+  } else {
+    // No gap - reset so a fresh snapshot is taken if a gap appears later
+    gapDetected = false;
+  }
+
+  return false;
+}
 
 // Check if the robot is too close to the front or back wall
 bool nearWall(int diodePin) {
