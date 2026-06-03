@@ -301,12 +301,11 @@ float distanceToWall(int diodePin) {
   if (diodePin == FRONT_DIODE_PIN) {
 
     distance = sqrt(1094.8427 / (analogRead(diodePin) - 32.6798));
-    //Serial.println("Distance to front wall: " + distance);
+    Serial.println(distance);
 
   } else if (diodePin == BACK_DIODE_PIN) {
 
     distance = sqrt(1312.7629 / (analogRead(diodePin) - 34.2690));
-    //Serial.println("Distance to back wall: " + distance);
 
   }
 
