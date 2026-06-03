@@ -1,5 +1,39 @@
-// Motor pins
-// to be added
+// Motor pins (Role 3)
+const int SIDE_P1 = 5;
+const int SIDE_P2 = 6;
+
+// Motor pins (Role 4)
+
+// Motor A = Left
+const int MOTOR_A_PWM = 3;
+const int MOTOR_A_DIR = 12;
+const int MOTOR_A_BRAKE = 9;
+
+// Motor B = Right
+const int MOTOR_B_PWM = 11;
+const int MOTOR_B_DIR = 13;
+const int MOTOR_B_BRAKE = 8;
+
+const int TEST_SPEED = 150;
+
+// Motor encoder pins
+const int ENCODER_A_CHAN_A = 20;
+const int ENCODER_A_CHAN_B = 26;
+
+const int ENCODER_B_CHAN_A = 21;
+const int ENCODER_B_CHAN_B = 28;
+
+const int ENCODER_C_CHAN_A = 18;
+const int ENCODER_C_CHAN_B = 22;
+
+const int ENCODER_D_CHAN_A = 19;
+const int ENCODER_D_CHAN_B = 24;
+
+// Volatile pulse counters for the ISRs
+volatile long encoderACount = 0;
+volatile long encoderBCount = 0;
+volatile long encoderCCount = 0;
+volatile long encoderDCount = 0;
 
 // LED pins
 const int FRONT1_LED_PIN = 48;
@@ -11,7 +45,7 @@ const int BACK2_LED_PIN = 42;
 const int FRONT_DIODE_PIN = A10;
 const int BACK_DIODE_PIN = A11;
 
-// switch pins
+// Side switch pins
 const int LEFT_SWITCH_PIN = 50;
 const int RIGHT_SWITCH_PIN = 52;
 
@@ -26,10 +60,10 @@ int bufferHead = 0;
 const int BUFFER_CHECK_SIZE = 5;
 
 // If diode reading is BELOW this it means there is some kind of gap (stalagmite or big gap) (arbtiraty for now)
-const int GAP_DETECTION_THRESHOLD = 2.0;
+const int GAP_DETECTION_THRESHOLD = 2;
 
 // If diode reading is ABOVE this it means the robot is too close to the front wall (arbitraty for now)
-const int WALL_DETECTION_THRESHOLD = 10.0;
+const int WALL_DETECTION_THRESHOLD = 10;
 
 // Tells the loop whether the robot should move left or right - begins by moving left
 bool movingLeft = true;
@@ -46,7 +80,34 @@ BotState currentState = SEARCHING_FOR_GAP;
 
 void setup() {
 
-  Serial.begin(9600);
+Serial.begin(9600);
+
+  pinMode(SIDE_P1, OUTPUT);
+  pinMode(SIDE_P2, OUTPUT);
+
+  pinMode(MOTOR_A_PWM, OUTPUT);
+  pinMode(MOTOR_A_DIR, OUTPUT);
+  pinMode(MOTOR_A_BRAKE, OUTPUT);
+  pinMode(MOTOR_B_PWM, OUTPUT);
+  pinMode(MOTOR_B_DIR, OUTPUT);
+  pinMode(MOTOR_B_BRAKE, OUTPUT);
+
+  // Lock breaks on startup for safety
+  engageBrakes();
+
+  pinMode(ENCODER_A_CHAN_A, INPUT_PULLUP);
+  pinMode(ENCODER_A_CHAN_B, INPUT_PULLUP);
+  pinMode(ENCODER_B_CHAN_A, INPUT_PULLUP);
+  pinMode(ENCODER_B_CHAN_B, INPUT_PULLUP);
+  pinMode(ENCODER_C_CHAN_A, INPUT_PULLUP);
+  pinMode(ENCODER_C_CHAN_B, INPUT_PULLUP);
+  pinMode(ENCODER_D_CHAN_A, INPUT_PULLUP);
+  pinMode(ENCODER_D_CHAN_B, INPUT_PULLUP);
+
+  attachInterrupt(digitalPinToInterrupt(ENCODER_A_CHAN_A), updateEncoderA, RISING);
+  attachInterrupt(digitalPinToInterrupt(ENCODER_B_CHAN_A), updateEncoderB, RISING);
+  attachInterrupt(digitalPinToInterrupt(ENCODER_C_CHAN_A), updateEncoderC, RISING);
+  attachInterrupt(digitalPinToInterrupt(ENCODER_D_CHAN_A), updateEncoderD, RISING);
 
   pinMode(FRONT1_LED_PIN, OUTPUT);
   pinMode(FRONT2_LED_PIN, OUTPUT);
@@ -59,11 +120,10 @@ void setup() {
   pinMode(LEFT_SWITCH_PIN, INPUT);
   pinMode(RIGHT_SWITCH_PIN, INPUT);
 
-  // populate buffer with high value to prevent false gap alert at the start
-  // could be changed as robot might start outside of the maze
+  // Populate buffer with high values to prevent false gap alert at the start
   for (int i = 0; i < BUFFER_LENGTH; i++) {
 
-    photodiodeBuffer[i] = 1023.0;
+    photodiodeBuffer[i] = 1023;
 
   }
 
@@ -131,6 +191,12 @@ void loop() {
 // All movement functions move the robot a constant distance
 void moveForward() {
 
+  Serial.println("\n>> MOTOR A: FORWARD");
+  digitalWrite(MOTOR_A_BRAKE, LOW);  
+  digitalWrite(MOTOR_A_DIR, HIGH);   
+  analogWrite(MOTOR_A_PWM, TEST_SPEED);
+  delay(500);
+  engageBrakes(); 
 
 }
 
@@ -228,4 +294,35 @@ int readPhotodiode(int ledPin, int diodePin) {
   digitalWrite(ledPin, LOW); // Turn off LED
   return diodeReading;
 
+}
+
+// Stops both motors instantly
+void engageBrakes() {
+
+  analogWrite(MOTOR_A_PWM, 0);
+  analogWrite(MOTOR_B_PWM, 0);
+  digitalWrite(MOTOR_A_BRAKE, HIGH);
+  digitalWrite(MOTOR_B_BRAKE, HIGH);
+
+}
+
+// Encoder ISRs
+void updateEncoderA() {
+  if (digitalRead(ENCODER_A_CHAN_B) == LOW) encoderACount++;
+  else encoderACount--;
+}
+
+void updateEncoderB() {
+  if (digitalRead(ENCODER_B_CHAN_B) == LOW) encoderBCount++;
+  else encoderBCount--;
+}
+
+void updateEncoderC() {
+  if (digitalRead(ENCODER_C_CHAN_B) == LOW) encoderCCount++;
+  else encoderCCount--;
+}
+
+void updateEncoderD() {
+  if (digitalRead(ENCODER_D_CHAN_B) == LOW) encoderDCount++;
+  else encoderDCount--;
 }
