@@ -326,7 +326,7 @@ bool checkPathClear() {
     int index = (bufferHead - i + BUFFER_LENGTH) % BUFFER_LENGTH;
 
     // If any of the last 5 values are high assume there is no gap
-    if (photodiodeBuffer[index] >= GAP_DETECTION_THRESHOLD) { 
+    if (photodiodeBuffer[index] > GAP_DETECTION_THRESHOLD) { 
 
       return false;
 
