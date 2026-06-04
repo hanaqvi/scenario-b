@@ -53,15 +53,15 @@ const int BACK_DIODE_PIN = A11;
 const int LEFT_SWITCH_PIN = 50;
 const int RIGHT_SWITCH_PIN = 52;
 
-// Circular buffer for gap detection
-const int BUFFER_LENGTH = 10;
-int photodiodeBuffer[BUFFER_LENGTH];
+// // Circular buffer for gap detection
+// const int BUFFER_LENGTH = 10;
+// int photodiodeBuffer[BUFFER_LENGTH];
 
-// Index of next value to be inserted in buffer
-int bufferHead = 0;
+// // Index of next value to be inserted in buffer
+// int bufferHead = 0;
 
-// Number of readings to check to determine if there has been a consistent gap, rather than a stalagmite
-const int BUFFER_CHECK_SIZE = 5;
+// // Number of readings to check to determine if there has been a consistent gap, rather than a stalagmite
+// const int BUFFER_CHECK_SIZE = 5;
 
 // If diode reading is BELOW this it means there is some kind of gap (stalagmite or big gap) (arbtiraty for now)
 const int GAP_DETECTION_THRESHOLD = 40;
@@ -136,12 +136,12 @@ Serial.begin(9600);
   pinMode(LEFT_SWITCH_PIN, INPUT);
   pinMode(RIGHT_SWITCH_PIN, INPUT);
 
-  // Populate buffer with high values to prevent false gap alert at the start
-  for (int i = 0; i < BUFFER_LENGTH; i++) {
+  // // Populate buffer with high values to prevent false gap alert at the start
+  // for (int i = 0; i < BUFFER_LENGTH; i++) {
 
-    photodiodeBuffer[i] = 1023;
+  //   photodiodeBuffer[i] = 1023;
 
-  }
+  // }
 
 }
 
@@ -271,27 +271,32 @@ void rotate180() {
 
 }
 
-// Move left or right depending on the current value of movingLeft
 void moveSideways() {
   if (movingLeft) {
     if (digitalRead(LEFT_SWITCH_PIN) == LOW) {
-      analogWrite(MOTOR_C_PIN_1, 0); // stop right motor
+      analogWrite(MOTOR_C_PIN_1, 0);
       analogWrite(MOTOR_D_PIN_2, 0);
       moveLeft();
     } else {
-      movingLeft = false;
-      analogWrite(MOTOR_C_PIN_2, 0); // stop left motor
+      // Stop at left wall, let main loop check for gap // added recently may not work
+      analogWrite(MOTOR_C_PIN_2, 0);
       analogWrite(MOTOR_D_PIN_1, 0);
+      if (!checkPathClear()) {
+        movingLeft = false;
+      }
     }
   } else {
     if (digitalRead(RIGHT_SWITCH_PIN) == LOW) {
-      analogWrite(MOTOR_C_PIN_2, 0); // stop left motor
+      analogWrite(MOTOR_C_PIN_2, 0);
       analogWrite(MOTOR_D_PIN_1, 0);
       moveRight();
     } else {
-      movingLeft = true;
-      analogWrite(MOTOR_C_PIN_1, 0); // stop right motor
+      // Stop at right wall, let main loop check for gap
+      analogWrite(MOTOR_C_PIN_1, 0);
       analogWrite(MOTOR_D_PIN_2, 0);
+      if (!checkPathClear()) {
+        movingLeft = true;
+      }
     }
   }
 }
@@ -347,26 +352,27 @@ float distanceToWall(int diodePin) {
 long gapStartEncoderCount = 0;
 bool gapDetected = false;
 
-int distanceTravelled() {
-  return (encoderDCount - gapStartEncoderCount) / 8.35;
+float distanceTravelled() {
+
+  return abs((long)(encoderDCount - gapStartEncoderCount)) / 8.35;
+
 }
 
 bool checkPathClear() {
   int reading = analogRead(FRONT_DIODE_PIN);
+  Serial.print("Sensor reading: ");
+  Serial.println(reading);
 
-  if (reading < GAP_DETECTION_THRESHOLD) { // A gap is present
+  if (reading < GAP_DETECTION_THRESHOLD) {
     if (!gapDetected) {
-      // Gap just started - snapshot the encoder position
       gapStartEncoderCount = encoderDCount;
       gapDetected = true;
     }
-    // Check if robot has travelled 18cm since gap began
     if (distanceTravelled() >= 18) {
-      gapDetected = false; // Reset for next gap
+      gapDetected = false;
       return true;
     }
   } else {
-    // No gap - reset so a fresh snapshot is taken if a gap appears later
     gapDetected = false;
   }
 
